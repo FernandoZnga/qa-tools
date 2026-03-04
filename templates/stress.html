@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="panel">
+  <h2>Stress / Load Runner</h2>
+  <p class="hint">Queue async load tests and track status in Async Runs tab.</p>
+  <div class="row two">
+    <select id="loadMethod">
+      <option>GET</option>
+      <option>POST</option>
+      <option>PUT</option>
+      <option>PATCH</option>
+      <option>DELETE</option>
+    </select>
+    <input id="loadUrl" type="text" placeholder="https://httpbin.org/get" />
+  </div>
+  <div class="row three">
+    <select id="loadMode">
+      <option value="single">single</option>
+      <option value="multi">multi</option>
+    </select>
+    <input id="loadConcurrency" type="number" value="1" min="1" max="300" placeholder="Concurrency" />
+    <input id="loadTotal" type="number" value="20" min="1" max="5000" placeholder="Total requests" />
+  </div>
+  <div class="row two">
+    <input id="loadDelay" type="number" value="0" min="0" max="60000" placeholder="Delay ms" />
+    <select id="loadBodyType">
+      <option value="json">json</option>
+      <option value="xml">xml</option>
+      <option value="raw">raw</option>
+    </select>
+  </div>
+  <div class="row">
+    <textarea id="loadHeaders" placeholder='Headers JSON'></textarea>
+    <textarea id="loadBody" placeholder="Request body"></textarea>
+    <button id="loadRun">Queue Async Run</button>
+  </div>
+  <div id="loadStatus" class="status"></div>
+  <pre id="loadOutput" class="output"></pre>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('loadRun').addEventListener('click', async () => {
+    const statusEl = document.getElementById('loadStatus');
+    statusEl.textContent = 'Queueing run...';
+    try {
+      const payload = {
+        method: document.getElementById('loadMethod').value,
+        url: document.getElementById('loadUrl').value,
+        mode: document.getElementById('loadMode').value,
+        concurrency: Number(document.getElementById('loadConcurrency').value || 1),
+        total_requests: Number(document.getElementById('loadTotal').value || 20),
+        delay_ms: Number(document.getElementById('loadDelay').value || 0),
+        headers: safeJsonParse(document.getElementById('loadHeaders').value, {}),
+        body_type: document.getElementById('loadBodyType').value,
+        body: document.getElementById('loadBody').value,
+      };
+
+      const queued = await apiPost('/api/client/load-test/run-async/', payload);
+      statusEl.textContent = `Queued run #${queued.load_run_id}. Open Async Runs tab for live status.`;
+      setOutput('loadOutput', queued);
+    } catch (err) {
+      statusEl.textContent = 'Load run failed';
+      setOutput('loadOutput', `Error: ${err.message}`);
+    }
+  });
+</script>
+{% endblock %}

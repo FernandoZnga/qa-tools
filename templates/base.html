@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title|default:'QA Tools' }}</title>
+  <style>
+    :root {
+      --bg: #f3f3f3;
+      --surface: #ffffff;
+      --text: #181818;
+      --muted: #666;
+      --line: #d8d8d8;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "SF Pro Text", "Avenir Next", "Segoe UI", sans-serif;
+    }
+
+    .wrap {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 24px 18px 38px;
+    }
+
+    .top {
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(1.4rem, 3.8vw, 2rem);
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    .admin-link {
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 12px;
+      background: var(--surface);
+      white-space: nowrap;
+      font-size: 0.9rem;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .tab {
+      text-decoration: none;
+      color: var(--text);
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 7px 11px;
+      font-size: 0.88rem;
+    }
+
+    .tab.active {
+      background: #111;
+      border-color: #111;
+      color: #fff;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      font-size: 1.1rem;
+    }
+
+    .hint {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .row {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .row.two {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .row.three {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 94px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    button {
+      cursor: pointer;
+      background: #111;
+      color: #fff;
+      border-color: #111;
+      font-weight: 600;
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--text);
+      border-color: var(--line);
+      font-weight: 500;
+    }
+
+    label input[type='checkbox'] {
+      width: auto;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    pre.output {
+      margin: 10px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fafafa;
+      padding: 10px;
+      min-height: 90px;
+      max-height: 380px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    .status {
+      margin-top: 8px;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      padding: 8px 6px;
+      vertical-align: top;
+    }
+
+    @media (max-width: 800px) {
+      .row.two, .row.three { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div>
+        <h1 class="title">Daily QA Tools</h1>
+        <p class="subtitle">Focused utilities for formatter, diff, API send, stress run, and async status tracking.</p>
+      </div>
+      <a class="admin-link" href="/admin/">Django Admin</a>
+    </header>
+
+    <nav class="tabs">
+      <a class="tab {% if active_tab == 'home' %}active{% endif %}" href="/">Home</a>
+      <a class="tab {% if active_tab == 'formatter' %}active{% endif %}" href="/formatter/">Formatter</a>
+      <a class="tab {% if active_tab == 'diff' %}active{% endif %}" href="/diff/">Diff</a>
+      <a class="tab {% if active_tab == 'api' %}active{% endif %}" href="/api/">API</a>
+      <a class="tab {% if active_tab == 'stress' %}active{% endif %}" href="/stress/">Stress</a>
+      <a class="tab {% if active_tab == 'data' %}active{% endif %}" href="/data/">Random Data</a>
+      <a class="tab {% if active_tab == 'runs' %}active{% endif %}" href="/runs/">Async Runs</a>
+    </nav>
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    function getCookie(name) {
+      const v = `; ${document.cookie}`;
+      const parts = v.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return '';
+    }
+
+    function safeJsonParse(text, fallback = {}) {
+      if (!text || !text.trim()) return fallback;
+      return JSON.parse(text);
+    }
+
+    function setOutput(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    }
+
+    async function apiPost(url, payload) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(JSON.stringify(body));
+      return body;
+    }
+
+    async function copyOutput(outputId, statusId) {
+      const text = (document.getElementById(outputId)?.textContent || '').trim();
+      if (!text) {
+        if (statusId) document.getElementById(statusId).textContent = 'Nothing to copy.';
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      if (statusId) document.getElementById(statusId).textContent = 'Copied to clipboard.';
+    }
+
+    function downloadOutput(outputId, filename, statusId) {
+      const text = (document.getElementById(outputId)?.textContent || '').trim();
+      if (!text) {
+        if (statusId) document.getElementById(statusId).textContent = 'Nothing to download.';
+        return;
+      }
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      if (statusId) document.getElementById(statusId).textContent = `Downloaded ${filename}`;
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

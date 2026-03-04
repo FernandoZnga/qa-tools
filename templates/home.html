@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="panel">
+  <h2>Toolkit Overview</h2>
+  <p class="hint">Use tabs to work in dedicated screens. Each tool page is fully interactive.</p>
+  <div class="cards">
+    <article class="card">
+      <h3>Formatter</h3>
+      <p>Paste or upload JSON/XML and pretty/minify with validation.</p>
+    </article>
+    <article class="card">
+      <h3>Diff</h3>
+      <p>Upload two files or paste text and generate unified diff output.</p>
+    </article>
+    <article class="card">
+      <h3>API</h3>
+      <p>Single request sender with method, headers, query, body, and response timing.</p>
+    </article>
+    <article class="card">
+      <h3>Stress</h3>
+      <p>Queue async runs with total requests, concurrency, single/multi mode, and body data.</p>
+    </article>
+    <article class="card">
+      <h3>Random Data</h3>
+      <p>Generate realistic QA data using Faker providers, JSON schema, or command-style definitions.</p>
+    </article>
+    <article class="card">
+      <h3>Async Runs</h3>
+      <p>Auto-refresh status page for queued/running/completed/failed runs and metrics.</p>
+    </article>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="panel">
+  <h2>File/Text Diff</h2>
+  <p class="hint">Upload two files or paste two texts.</p>
+  <div class="row two">
+    <input id="diffFileA" type="file" />
+    <input id="diffFileB" type="file" />
+  </div>
+  <div class="row two">
+    <textarea id="diffTextA" placeholder="Text A"></textarea>
+    <textarea id="diffTextB" placeholder="Text B"></textarea>
+  </div>
+  <div class="row two">
+    <label><input id="diffIgnoreWs" type="checkbox" /> Ignore whitespace</label>
+    <button id="diffRun">Run Diff</button>
+  </div>
+  <div class="row two">
+    <button id="diffCopy" class="secondary">Copy Diff</button>
+    <button id="diffDownload" class="secondary">Download Diff</button>
+  </div>
+  <div id="diffStatus" class="status"></div>
+  <pre id="diffOutput" class="output"></pre>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('diffRun').addEventListener('click', async () => {
+    try {
+      const formData = new FormData();
+      const fileA = document.getElementById('diffFileA').files[0];
+      const fileB = document.getElementById('diffFileB').files[0];
+      if (fileA) formData.append('file_a', fileA);
+      if (fileB) formData.append('file_b', fileB);
+      formData.append('text_a', document.getElementById('diffTextA').value);
+      formData.append('text_b', document.getElementById('diffTextB').value);
+      formData.append('ignore_whitespace', document.getElementById('diffIgnoreWs').checked ? 'true' : 'false');
+
+      const res = await fetch('/api/formatter/diff/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(JSON.stringify(data));
+      setOutput('diffOutput', data.diff || 'No differences found.');
+      document.getElementById('diffStatus').textContent = data.has_diff ? 'Diff generated.' : 'No differences found.';
+    } catch (err) {
+      setOutput('diffOutput', `Error: ${err.message}`);
+      document.getElementById('diffStatus').textContent = 'Diff failed.';
+    }
+  });
+
+  document.getElementById('diffCopy').addEventListener('click', async () => {
+    await copyOutput('diffOutput', 'diffStatus');
+  });
+
+  document.getElementById('diffDownload').addEventListener('click', () => {
+    downloadOutput('diffOutput', 'diff-output.patch', 'diffStatus');
+  });
+</script>
+{% endblock %}

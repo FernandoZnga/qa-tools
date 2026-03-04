@@ -1,0 +1,42 @@
+__pycache__/
+*.py[cod]
+*.sqlite3
+.env
+.venv/
+staticfiles/
+
+# Python caches and artifacts
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Packaging/build outputs
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+
+# Django/local app data
+media/
+db.sqlite3
+
+# Logs
+*.log
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store

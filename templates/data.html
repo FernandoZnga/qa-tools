@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="panel">
+  <h2>Random Data Generator (Faker)</h2>
+  <p class="hint">Generate QA data using schema JSON or command-style variable definitions.</p>
+
+  <div class="row three">
+    <input id="dataCount" type="number" value="5" min="1" max="500" placeholder="Count" />
+    <input id="dataLocale" type="text" value="en_US" placeholder="Locale, e.g. en_US" />
+    <input id="dataSeed" type="number" placeholder="Seed (optional)" />
+  </div>
+
+  <div class="row two">
+    <textarea id="dataSchema" placeholder='Schema JSON, e.g. {"full_name":"name","age":{"provider":"random_int","kwargs":{"min":18,"max":90}}}'></textarea>
+    <textarea id="dataCommands" placeholder='Commands (Python style):\nuser_email = email()\namount = pyfloat(left_digits=2, right_digits=2, positive=True)\norder_id = bothify(text="ORD-####")'></textarea>
+  </div>
+
+  <div class="row three">
+    <button id="dataRun">Generate Data</button>
+    <button id="dataProviders" class="secondary">List Providers</button>
+    <button id="dataExample" class="secondary">Load Example</button>
+  </div>
+
+  <div class="row two">
+    <button id="dataCopy" class="secondary">Copy Result</button>
+    <button id="dataDownload" class="secondary">Download Result</button>
+  </div>
+
+  <div id="dataStatus" class="status"></div>
+  <pre id="dataOutput" class="output"></pre>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function loadDataExample() {
+    document.getElementById('dataSchema').value = JSON.stringify({
+      uuid: 'uuid4',
+      full_name: 'name',
+      user_name: 'user_name',
+      email: 'email',
+      company: 'company',
+      amount: { provider: 'pyfloat', kwargs: { left_digits: 3, right_digits: 2, positive: true } },
+      created_at: { provider: 'iso8601' }
+    }, null, 2);
+
+    document.getElementById('dataCommands').value = [
+      'qa_ticket = bothify(text="QA-####")',
+      'priority = random_element(elements=["low","medium","high"])',
+      'future_date = date_between(start_date="today", end_date="+30d")',
+    ].join('\n');
+  }
+
+  document.getElementById('dataExample').addEventListener('click', loadDataExample);
+
+  document.getElementById('dataRun').addEventListener('click', async () => {
+    const statusEl = document.getElementById('dataStatus');
+    statusEl.textContent = 'Generating...';
+
+    try {
+      const schemaText = document.getElementById('dataSchema').value.trim();
+      const commands = document.getElementById('dataCommands').value;
+      const seedText = document.getElementById('dataSeed').value.trim();
+
+      const payload = {
+        count: Number(document.getElementById('dataCount').value || 1),
+        locale: document.getElementById('dataLocale').value || 'en_US',
+        commands: commands,
+      };
+
+      if (schemaText) payload.schema = JSON.parse(schemaText);
+      if (seedText) payload.seed = Number(seedText);
+
+      const data = await apiPost('/api/core/random-data/generate/', payload);
+      setOutput('dataOutput', data);
+      statusEl.textContent = `Generated ${data.count} rows.`;
+    } catch (err) {
+      setOutput('dataOutput', `Error: ${err.message}`);
+      statusEl.textContent = 'Generation failed.';
+    }
+  });
+
+  document.getElementById('dataProviders').addEventListener('click', async () => {
+    const statusEl = document.getElementById('dataStatus');
+    statusEl.textContent = 'Loading providers...';
+
+    try {
+      const locale = encodeURIComponent(document.getElementById('dataLocale').value || 'en_US');
+      const res = await fetch(`/api/core/random-data/providers/?locale=${locale}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(JSON.stringify(data));
+      setOutput('dataOutput', data);
+      statusEl.textContent = `Loaded ${data.provider_count} providers.`;
+    } catch (err) {
+      setOutput('dataOutput', `Error: ${err.message}`);
+      statusEl.textContent = 'Provider lookup failed.';
+    }
+  });
+
+  document.getElementById('dataCopy').addEventListener('click', async () => {
+    await copyOutput('dataOutput', 'dataStatus');
+  });
+
+  document.getElementById('dataDownload').addEventListener('click', () => {
+    downloadOutput('dataOutput', 'random-data.json', 'dataStatus');
+  });
+</script>
+{% endblock %}

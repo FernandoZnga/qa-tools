@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="panel">
+  <h2>JSON/XML Formatter</h2>
+  <p class="hint">Paste content or upload one file.</p>
+  <div class="row two">
+    <select id="fmtType">
+      <option value="json">json</option>
+      <option value="xml">xml</option>
+    </select>
+    <select id="fmtAction">
+      <option value="pretty">pretty</option>
+      <option value="minify">minify</option>
+    </select>
+  </div>
+  <div class="row">
+    <input id="fmtFile" type="file" />
+    <textarea id="fmtInput" placeholder="Paste JSON or XML here"></textarea>
+    <button id="fmtRun">Format</button>
+  </div>
+  <div class="row two">
+    <button id="fmtCopy" class="secondary">Copy Result</button>
+    <button id="fmtDownload" class="secondary">Download Result</button>
+  </div>
+  <div id="fmtStatus" class="status"></div>
+  <pre id="fmtOutput" class="output"></pre>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function readTextFromFileInput(inputEl) {
+    const file = inputEl.files && inputEl.files[0];
+    if (!file) return null;
+    return await file.text();
+  }
+
+  document.getElementById('fmtRun').addEventListener('click', async () => {
+    try {
+      const fileText = await readTextFromFileInput(document.getElementById('fmtFile'));
+      const body = {
+        format: document.getElementById('fmtType').value,
+        action: document.getElementById('fmtAction').value,
+        input: fileText !== null ? fileText : document.getElementById('fmtInput').value,
+      };
+      const data = await apiPost('/api/formatter/format/', body);
+      setOutput('fmtOutput', data.output || data);
+      document.getElementById('fmtStatus').textContent = 'Formatted successfully.';
+    } catch (err) {
+      setOutput('fmtOutput', `Error: ${err.message}`);
+      document.getElementById('fmtStatus').textContent = 'Formatter failed.';
+    }
+  });
+
+  document.getElementById('fmtCopy').addEventListener('click', async () => {
+    await copyOutput('fmtOutput', 'fmtStatus');
+  });
+
+  document.getElementById('fmtDownload').addEventListener('click', () => {
+    const extension = document.getElementById('fmtType').value === 'xml' ? 'xml' : 'json';
+    downloadOutput('fmtOutput', `formatted-output.${extension}`, 'fmtStatus');
+  });
+</script>
+{% endblock %}

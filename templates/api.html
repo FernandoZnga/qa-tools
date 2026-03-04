@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="panel">
+  <h2>API Sender</h2>
+  <p class="hint">Configure and send a single endpoint call.</p>
+  <div class="row two">
+    <select id="apiMethod">
+      <option>GET</option>
+      <option>POST</option>
+      <option>PUT</option>
+      <option>PATCH</option>
+      <option>DELETE</option>
+    </select>
+    <input id="apiTimeout" type="number" value="30" min="1" max="300" placeholder="Timeout seconds" />
+  </div>
+  <div class="row">
+    <input id="apiUrl" type="text" placeholder="https://httpbin.org/post" />
+    <textarea id="apiHeaders" placeholder='Headers JSON, e.g. {"Authorization":"Bearer x"}'></textarea>
+    <textarea id="apiQuery" placeholder='Query params JSON, e.g. {"page":1}'></textarea>
+    <select id="apiBodyType">
+      <option value="json">json</option>
+      <option value="xml">xml</option>
+      <option value="raw">raw</option>
+    </select>
+    <textarea id="apiBody" placeholder="Request body"></textarea>
+    <button id="apiRun">Send Request</button>
+  </div>
+  <div id="apiStatus" class="status"></div>
+  <pre id="apiOutput" class="output"></pre>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('apiRun').addEventListener('click', async () => {
+    const statusEl = document.getElementById('apiStatus');
+    statusEl.textContent = 'Sending...';
+    try {
+      const payload = {
+        method: document.getElementById('apiMethod').value,
+        url: document.getElementById('apiUrl').value,
+        headers: safeJsonParse(document.getElementById('apiHeaders').value, {}),
+        query_params: safeJsonParse(document.getElementById('apiQuery').value, {}),
+        body_type: document.getElementById('apiBodyType').value,
+        body: document.getElementById('apiBody').value,
+        timeout_seconds: Number(document.getElementById('apiTimeout').value || 30),
+      };
+      const data = await apiPost('/api/client/send/', payload);
+      statusEl.textContent = `Status ${data.status_code} in ${data.duration_ms} ms`;
+      setOutput('apiOutput', data.response_body || data);
+    } catch (err) {
+      statusEl.textContent = 'Request failed';
+      setOutput('apiOutput', `Error: ${err.message}`);
+    }
+  });
+</script>
+{% endblock %}
