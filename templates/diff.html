@@ -2,19 +2,51 @@
 
 {% block content %}
 <section class="panel">
-  <h2>File/Text Diff</h2>
-  <p class="hint">Upload two files or paste two texts.</p>
-  <div class="row two">
-    <input id="diffFileA" type="file" />
-    <input id="diffFileB" type="file" />
+  <h2>Diff Workbench</h2>
+  <p class="hint">Compare files or text side by side and download a unified diff patch.</p>
+
+  <div class="diff-mode-tabs" role="tablist" aria-label="Diff Mode">
+    <button id="modeFiles" class="secondary active" data-mode="files" role="tab" aria-selected="true">
+      Compare Files
+    </button>
+    <button id="modeText" class="secondary" data-mode="text" role="tab" aria-selected="false">
+      Compare Text
+    </button>
   </div>
-  <div class="row two">
-    <textarea id="diffTextA" placeholder="Text A"></textarea>
-    <textarea id="diffTextB" placeholder="Text B"></textarea>
+
+  <div id="paneFiles" class="diff-pane">
+    <div class="row two">
+      <div class="diff-col">
+        <label for="diffFileA">Original File</label>
+        <input id="diffFileA" type="file" />
+        <input id="diffFileAName" type="text" placeholder="Left label (optional)" />
+      </div>
+      <div class="diff-col">
+        <label for="diffFileB">Updated File</label>
+        <input id="diffFileB" type="file" />
+        <input id="diffFileBName" type="text" placeholder="Right label (optional)" />
+      </div>
+    </div>
   </div>
+
+  <div id="paneText" class="diff-pane hidden">
+    <div class="row two">
+      <div class="diff-col">
+        <label for="diffTextAName">Original Label</label>
+        <input id="diffTextAName" type="text" value="original.txt" />
+        <textarea id="diffTextA" placeholder="Paste original text"></textarea>
+      </div>
+      <div class="diff-col">
+        <label for="diffTextBName">Updated Label</label>
+        <input id="diffTextBName" type="text" value="updated.txt" />
+        <textarea id="diffTextB" placeholder="Paste updated text"></textarea>
+      </div>
+    </div>
+  </div>
+
   <div class="row two">
-    <label><input id="diffIgnoreWs" type="checkbox" /> Ignore whitespace</label>
-    <button id="diffRun">Run Diff</button>
+    <label><input id="diffIgnoreWs" type="checkbox" /> Ignore whitespace-only changes</label>
+    <button id="diffRun">Analyze Differences</button>
   </div>
   <div class="row two">
     <button id="diffCopy" class="secondary">Copy Diff</button>
@@ -23,19 +55,139 @@
   <div id="diffStatus" class="status"></div>
   <pre id="diffOutput" class="output"></pre>
 </section>
+
+<style>
+  .diff-mode-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .diff-mode-tabs button {
+    width: auto;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .diff-mode-tabs button.active {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+  }
+
+  .diff-pane.hidden {
+    display: none;
+  }
+
+  .diff-col {
+    display: grid;
+    gap: 8px;
+  }
+
+  .diff-col label {
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  #diffOutput {
+    white-space: pre;
+    overflow: auto;
+    max-height: 480px;
+  }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
+  let currentMode = 'files';
+  let lastFromName = 'a';
+  let lastToName = 'b';
+
+  function toggleMode(mode) {
+    currentMode = mode;
+    const filesActive = mode === 'files';
+    document.getElementById('modeFiles').classList.toggle('active', filesActive);
+    document.getElementById('modeText').classList.toggle('active', !filesActive);
+    document.getElementById('modeFiles').setAttribute('aria-selected', filesActive ? 'true' : 'false');
+    document.getElementById('modeText').setAttribute('aria-selected', filesActive ? 'false' : 'true');
+    document.getElementById('paneFiles').classList.toggle('hidden', !filesActive);
+    document.getElementById('paneText').classList.toggle('hidden', filesActive);
+    document.getElementById('diffStatus').textContent = filesActive
+      ? 'File mode ready. Upload left and right files.'
+      : 'Text mode ready. Paste left and right text.';
+  }
+
+  function sanitizeName(value) {
+    return (value || 'diff')
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80) || 'diff';
+  }
+
+  function summarizeDiff(diffText) {
+    const lines = (diffText || '').split('\n');
+    let added = 0;
+    let removed = 0;
+    for (const line of lines) {
+      if (line.startsWith('+++') || line.startsWith('---')) continue;
+      if (line.startsWith('+')) added += 1;
+      if (line.startsWith('-')) removed += 1;
+    }
+    return { added, removed };
+  }
+
+  document.getElementById('modeFiles').addEventListener('click', () => toggleMode('files'));
+  document.getElementById('modeText').addEventListener('click', () => toggleMode('text'));
+
+  document.getElementById('diffFileA').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file && !document.getElementById('diffFileAName').value.trim()) {
+      document.getElementById('diffFileAName').value = file.name;
+    }
+  });
+
+  document.getElementById('diffFileB').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file && !document.getElementById('diffFileBName').value.trim()) {
+      document.getElementById('diffFileBName').value = file.name;
+    }
+  });
+
   document.getElementById('diffRun').addEventListener('click', async () => {
     try {
       const formData = new FormData();
-      const fileA = document.getElementById('diffFileA').files[0];
-      const fileB = document.getElementById('diffFileB').files[0];
-      if (fileA) formData.append('file_a', fileA);
-      if (fileB) formData.append('file_b', fileB);
-      formData.append('text_a', document.getElementById('diffTextA').value);
-      formData.append('text_b', document.getElementById('diffTextB').value);
+
+      let fromName = 'a';
+      let toName = 'b';
+
+      if (currentMode === 'files') {
+        const fileA = document.getElementById('diffFileA').files[0];
+        const fileB = document.getElementById('diffFileB').files[0];
+
+        if (!fileA && !fileB) {
+          throw new Error('Upload at least one file to compare.');
+        }
+
+        if (fileA) formData.append('file_a', fileA);
+        if (fileB) formData.append('file_b', fileB);
+        fromName = document.getElementById('diffFileAName').value.trim() || (fileA ? fileA.name : 'left-file');
+        toName = document.getElementById('diffFileBName').value.trim() || (fileB ? fileB.name : 'right-file');
+      } else {
+        const textA = document.getElementById('diffTextA').value;
+        const textB = document.getElementById('diffTextB').value;
+        if (!textA.trim() && !textB.trim()) {
+          throw new Error('Paste text in at least one side to compare.');
+        }
+        formData.append('text_a', textA);
+        formData.append('text_b', textB);
+        fromName = document.getElementById('diffTextAName').value.trim() || 'original.txt';
+        toName = document.getElementById('diffTextBName').value.trim() || 'updated.txt';
+      }
+
+      formData.append('from_name', fromName);
+      formData.append('to_name', toName);
       formData.append('ignore_whitespace', document.getElementById('diffIgnoreWs').checked ? 'true' : 'false');
 
       const res = await fetch('/api/formatter/diff/', {
@@ -45,8 +197,19 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(JSON.stringify(data));
-      setOutput('diffOutput', data.diff || 'No differences found.');
-      document.getElementById('diffStatus').textContent = data.has_diff ? 'Diff generated.' : 'No differences found.';
+
+      const output = data.diff || 'No differences found.';
+      lastFromName = data.from_name || fromName;
+      lastToName = data.to_name || toName;
+      setOutput('diffOutput', output);
+
+      if (data.has_diff) {
+        const summary = summarizeDiff(output);
+        document.getElementById('diffStatus').textContent =
+          `Diff generated: ${lastFromName} -> ${lastToName} | +${summary.added} / -${summary.removed}`;
+      } else {
+        document.getElementById('diffStatus').textContent = `No differences found: ${lastFromName} vs ${lastToName}`;
+      }
     } catch (err) {
       setOutput('diffOutput', `Error: ${err.message}`);
       document.getElementById('diffStatus').textContent = 'Diff failed.';
@@ -58,7 +221,10 @@
   });
 
   document.getElementById('diffDownload').addEventListener('click', () => {
-    downloadOutput('diffOutput', 'diff-output.patch', 'diffStatus');
+    const filename = `${sanitizeName(lastFromName)}-vs-${sanitizeName(lastToName)}.patch`;
+    downloadOutput('diffOutput', filename, 'diffStatus');
   });
+
+  toggleMode('files');
 </script>
 {% endblock %}
